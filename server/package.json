@@ -10,6 +10,7 @@
     "datastore:init": "DATA_LEVEL=full node src/datastore/scripts/createDatastore/init.js",
     "datastore:init:lowdata": "DATA_LEVEL=low node src/datastore/scripts/createDatastore/init.js",
     "datastore:init:quick": "node src/datastore/scripts/createDatastore/quick.js",
+    "redisstore:init:quick": "node src/datastore/scripts/createDatastore/quickRedis.js",
     "test": "NODE_ENV=test mocha 'src/**/*.test.js' --inline-diffs --exit"
   },
   "dependencies": {
@@ -29,6 +30,7 @@
     "node-cron": "^2.0.3",
     "nodemon": "^2.0.4",
     "pg": "^8.3.0",
+    "redis": "^3.0.2",
     "sequelize": "^6.3.4"
   },
   "devDependencies": {

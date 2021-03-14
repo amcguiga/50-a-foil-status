@@ -55,6 +55,32 @@ To run one of these scripts, prepend `npm run` before the script name (e.g., `np
 - "datastore:init:lowdata": Bootstraps your datastore with minimal data (same limits as the "dev:lowdata" script) and exits. **Time: ~3 minutes.**
 - "datastore:init:quick": Bootstraps a full datastore with (older) reference data from the repo and exits. **Time: instant.**
 
+**Redis**
+Install redis & redis-cli from homebrew
+```
+brew install redis
+brew install redis-cli
+```
+
+Run the redis server on the default settings
+```
+shell
+redis-server
+```
+
+- "redisstore:init:quick": As the datastore quick initialization, however, the promise to conclude the job isn't working and needs to be manually exited
+
+Check redis store using redis-cli
+```
+shell
+redis-cli
+
+get runDate
+hgetall foiaRequest:96378
+hgetall agency:21968
+hgetall jurisdiction:23199
+```
+
 **Tests**
 
 - "test": Runs tests.

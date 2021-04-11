@@ -3,12 +3,14 @@ import { useAsync } from "react-async";
 import FoiaList from "./components/FoiaList";
 import { ResponsiveBar } from "@nivo/bar";
 import { ResponsiveTreeMap } from "@nivo/treemap";
+import { ResponsiveFunnel } from '@nivo/funnel'
 import { DateTime } from "luxon";
 import HamburgerMenu from "react-hamburger-menu";
 import Drawer from "./components/Toolbar/Drawer/Drawer";
 import "normalize.css";
 import "./astoria-tech-design.css";
 import "./styles.css";
+import { convertFoiaStatus } from "./components/FoiaStatus";
 
 async function getMuckrockData() {
   // When in production, the API is at the same domain as the frontend
@@ -31,6 +33,7 @@ function App() {
   if (error) return <pre>{JSON.stringify(error, null, 2)}</pre>;
   if (!data) return <p>No data</p>;
 
+  const statuses = new Map();
   const uniquePrices = new Set();
   const turnaroundTimes = new Map();
   turnaroundTimes.set("1–10", 0);
@@ -39,6 +42,11 @@ function App() {
   turnaroundTimes.set("51–100", 0);
   turnaroundTimes.set("101–150", 0);
   turnaroundTimes.set("151+", 0);
+
+  const communicationAggregate = new Map();
+  const communicationHistory = new Map();
+
+  console.log(data.foiaList.length);
 
   data.foiaList.forEach((item) => {
     if (item.foiaReq.datetime_done) {
@@ -66,9 +74,40 @@ function App() {
       }
     }
     const price = parseFloat(item.foiaReq.price);
-    if (price <= 0) return false;
-    uniquePrices.add(price);
+    if (price > 0) uniquePrices.add(price);
+    
+    const itemStatusHistory = new Array();
+    const itemStatusSet = new Set();
+    itemStatusSet.add("ack");
+
+    item.foiaReq.communications.forEach((communication) => {
+      if (communication.status) {
+        itemStatusSet.add(communication.status);
+        itemStatusHistory.push(communication.status);
+      }
+    });
+
+    itemStatusHistory.push(item.foiaReq.status);
+    communicationHistory.set(item.foiaReq.id, itemStatusHistory);
+
+    itemStatusSet.add(item.foiaReq.status);
+    itemStatusSet.forEach((status) => {
+      if (communicationAggregate.has(status)) {
+        communicationAggregate.set(status, communicationAggregate.get(status) + 1);
+      } else {
+        communicationAggregate.set(status, 1);
+      }
+    })
+
+    if (statuses.has(item.foiaReq.status)) {
+      statuses.set(item.foiaReq.status, statuses.get(item.foiaReq.status) + 1);
+    } else {
+      statuses.set(item.foiaReq.status, 1);
+    }
   });
+
+  console.log(communicationAggregate);
+  console.log(communicationHistory);
 
   const prices = Array.from(uniquePrices)
     .sort((first, second) => second - first)
@@ -91,14 +130,25 @@ function App() {
   // See file for data structure the graph expects.
   const tmpdata = require("./temp-treemap-data.json");
 
-  const statuses = new Map();
-  data.foiaList.forEach((item) => {
-    if (statuses.has(item.foiaReq.status)) {
-      statuses.set(item.foiaReq.status, statuses.get(item.foiaReq.status) + 1);
-    } else {
-      statuses.set(item.foiaReq.status, 1);
-    }
-  });
+  const happyFunnel = (aggregate) => {
+    return ["ack", "processed", "partial", "done"].map((status) => extractAggregateStatusData(aggregate, status));
+  };
+
+  const unhappyFunnel = (aggregate) => {
+    return ["ack", "processed", "no_docs", "rejected"].map((status) => extractAggregateStatusData(aggregate, status));
+  };
+
+  const bumpyFunnel = (aggregate) => {
+    return ["ack", "fix", "payment", "lawsuit"].map((status) => extractAggregateStatusData(aggregate, status));
+  };
+
+  const extractAggregateStatusData = (aggregate, status) => {
+    return {
+      id: status,
+      label: convertFoiaStatus(status).label,
+      value: aggregate.get(status)
+    };
+  };
 
   const statusGraphData = function statusGraphData() {
     // Sweet math here. Return result when done.
@@ -163,6 +213,54 @@ function App() {
           police departments have claimed to have no records (“no documents”) of
           officer misconduct from the past 50 years.
         </p>
+        <div className="graph">
+          <ResponsiveFunnel
+            data={happyFunnel(communicationAggregate)}
+            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+            colors={{ scheme: 'spectral' }}
+            borderWidth={20}
+            labelColor={{ from: 'color', modifiers: [ [ 'darker', 3 ] ] }}
+            beforeSeparatorLength={100}
+            beforeSeparatorOffset={20}
+            afterSeparatorLength={100}
+            afterSeparatorOffset={20}
+            currentPartSizeExtension={10}
+            currentBorderWidth={40}
+            motionConfig="wobbly"
+          />
+        </div>
+        <div className="graph">
+          <ResponsiveFunnel
+            data={unhappyFunnel(communicationAggregate)}
+            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+            colors={{ scheme: 'spectral' }}
+            borderWidth={20}
+            labelColor={{ from: 'color', modifiers: [ [ 'darker', 3 ] ] }}
+            beforeSeparatorLength={100}
+            beforeSeparatorOffset={20}
+            afterSeparatorLength={100}
+            afterSeparatorOffset={20}
+            currentPartSizeExtension={10}
+            currentBorderWidth={40}
+            motionConfig="wobbly"
+          />
+        </div>
+        <div className="graph">
+          <ResponsiveFunnel
+            data={bumpyFunnel(communicationAggregate)}
+            margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+            colors={{ scheme: 'spectral' }}
+            borderWidth={20}
+            labelColor={{ from: 'color', modifiers: [ [ 'darker', 3 ] ] }}
+            beforeSeparatorLength={100}
+            beforeSeparatorOffset={20}
+            afterSeparatorLength={100}
+            afterSeparatorOffset={20}
+            currentPartSizeExtension={10}
+            currentBorderWidth={40}
+            motionConfig="wobbly"
+          />
+        </div>
         <p>
           The done status may not mean that the request was successful, Muckrock
           is restarting some requests from the beginning after having previous
